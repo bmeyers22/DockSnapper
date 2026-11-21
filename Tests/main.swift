@@ -1,3 +1,4 @@
+import Carbon
 import CoreGraphics
 import Foundation
 
@@ -33,3 +34,16 @@ expect(history.original(for: 1) == nil && history.original(for: 2)?.window == se
 expect(history.destination(.restore, window: 2, current: primary, workArea: work) == Geometry.target(.restore, in: work, original: second), "restore into the new work area after a display change")
 history.keepWindows { _ in false }
 expect(history.original(for: 2) == nil, "discard closed windows")
+
+let domain = "DockSnapperTests." + UUID().uuidString
+let preferences = UserDefaults(suiteName: domain)!
+defer { preferences.removePersistentDomain(forName: domain) }
+let bindings = Shortcut.load(from: preferences)
+expect(bindings.map(\.label) == ["⇧⌘←", "⇧⌘→", "⇧⌘↑", "⇧⌘↓"], "default Command Shift arrows")
+preferences.set(1, forKey: "modifiers")
+expect(Shortcut.load(from: preferences).first?.label == "⌃⌥←", "retain an explicitly selected older modifier pair")
+var custom = bindings
+custom[2] = Shortcut(key: UInt32(kVK_ANSI_F), modifiers: UInt32(controlKey | cmdKey), name: "F")
+preferences.set(try JSONEncoder().encode(custom), forKey: "shortcuts")
+expect(Shortcut.load(from: preferences) == custom, "custom key and modifiers survive reload independently")
+expect(custom[2].conflicts(with: Shortcut(key: custom[2].key, modifiers: custom[2].modifiers, name: "f")), "detect duplicate bindings independent of displayed name")

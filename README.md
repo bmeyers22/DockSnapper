@@ -4,10 +4,10 @@ Snap the focused Mac window with four keyboard shortcuts. Hover over a running a
 
 | Shortcut | Action |
 | --- | --- |
-| Shift + Option + Left | Left half of the current display |
-| Shift + Option + Right | Right half |
-| Shift + Option + Up | Fill the usable desktop |
-| Shift + Option + Down | Restore the window's position and size before its first snap |
+| Command + Shift + Left | Left half of the current display |
+| Command + Shift + Right | Right half |
+| Command + Shift + Up | Fill the usable desktop |
+| Command + Shift + Down | Restore the window's position and size before its first snap |
 
 Each window remembers its own original bounds for the current app session. Snapping respects the menu bar, Dock, and application minimum sizes. Full-screen windows are skipped. If a display has been unplugged, restore fits the window onto an available display.
 
@@ -25,7 +25,7 @@ scripts/build.sh
 open build/DockSnapper.app
 ```
 
-For daily use, move the app into Applications before granting permissions. Click the split-window menu bar icon to pause snapping, change the shortcut modifiers, or toggle Dock thumbnails. If you use Shift + Option + Arrow for selecting text, choose a different modifier pair.
+For daily use, move the app into Applications before granting permissions. Open the split-window menu bar icon and choose **Keyboard Shortcuts…** to edit any of the four actions. Click its current shortcut, then press a modifier and a key. Escape cancels. **Restore Defaults** returns all four to Command + Shift + Arrow. You can also pause snapping or toggle Dock thumbnails from the menu.
 
 ## Permissions and previews
 

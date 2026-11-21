@@ -1,12 +1,6 @@
 import AppKit
 import Carbon
 
-enum Chord: Int, CaseIterable {
-    case shiftOption, controlOption, controlShift, commandOption
-    var label: String { ["⇧⌥", "⌃⌥", "⌃⇧", "⌘⌥"][rawValue] }
-    var flags: UInt32 { UInt32([shiftKey | optionKey, controlKey | optionKey, controlKey | shiftKey, cmdKey | optionKey][rawValue]) }
-}
-
 final class HotKeys {
     private var handler: EventHandlerRef?
     private var registrations: [EventHotKeyRef] = []
@@ -18,7 +12,7 @@ final class HotKeys {
         registrations.removeAll()
     }
 
-    func register(_ chord: Chord) -> String? {
+    func register(_ shortcuts: [Shortcut]) -> String? {
         clear()
         if handler == nil {
             var event = EventTypeSpec(eventClass: OSType(kEventClassKeyboard), eventKind: UInt32(kEventHotKeyPressed))
@@ -32,14 +26,13 @@ final class HotKeys {
             }, 1, &event, Unmanaged.passUnretained(self).toOpaque(), &handler)
             if status != noErr { return "Keyboard shortcuts are unavailable (\(status))." }
         }
-        let codes = [kVK_LeftArrow, kVK_RightArrow, kVK_UpArrow, kVK_DownArrow]
-        for (action, code) in zip(Snap.allCases, codes) {
+        for (action, shortcut) in zip(Snap.allCases, shortcuts) {
             var ref: EventHotKeyRef?
             let id = EventHotKeyID(signature: 0x44534E50, id: UInt32(action.rawValue))
-            let result = RegisterEventHotKey(UInt32(code), chord.flags, id, GetApplicationEventTarget(), 0, &ref)
+            let result = RegisterEventHotKey(shortcut.key, shortcut.modifiers, id, GetApplicationEventTarget(), 0, &ref)
             guard result == noErr, let ref else {
                 clear()
-                return "\(action.title) could not register. Choose another shortcut modifier."
+                return "\(action.title) could not register \(shortcut.label). Try a different combination."
             }
             registrations.append(ref)
         }

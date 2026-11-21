@@ -12,7 +12,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     private var trusted = false
     private var timer: Timer?
     private var pruneTicks = 0
-    private var chord: Chord { Chord(rawValue: defaults.integer(forKey: "modifiers")) ?? .shiftOption }
+    private lazy var shortcuts = Shortcut.load(from: defaults)
+    private let editor = ShortcutEditor()
+    private var isRecordingShortcut = false
     private var paused: Bool { defaults.bool(forKey: "paused") }
     private var previews: Bool { !defaults.bool(forKey: "hidePreviews") }
 
@@ -23,6 +25,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         let menu = NSMenu()
         menu.delegate = self
         status.menu = menu
+        editor.suspend = { [weak self] in self?.isRecordingShortcut = true; self?.keys.clear() }
+        editor.resume = { [weak self] in self?.isRecordingShortcut = false; self?.configure() }
+        editor.save = { [weak self] choices in self?.save(choices) }
         configure()
         timer = Timer.scheduledTimer(withTimeInterval: 2, repeats: true) { [weak self] _ in
             MainActor.assumeIsolated { self?.refresh() }
@@ -31,6 +36,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
             defaults.set(true, forKey: "introduced")
             DispatchQueue.main.async { self.introduce() }
         }
+    }
+
+    func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows flag: Bool) -> Bool {
+        editShortcuts()
+        return true
     }
 
     private func introduce() {
@@ -52,7 +62,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     private func configure() {
         trusted = AXIsProcessTrusted()
         keys.clear()
-        problem = trusted && !paused ? keys.register(chord) : nil
+        problem = trusted && !paused && !isRecordingShortcut ? keys.register(shortcuts) : nil
         if trusted && previews { hover.start() } else { hover.stop() }
     }
 
@@ -69,23 +79,27 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         if !CGPreflightScreenCaptureAccess() { _ = entry(menu, "Enable Window Images…", #selector(recording)) }
         if let problem { _ = entry(menu, problem) }
         menu.addItem(.separator())
-        _ = entry(menu, "\(chord.label) ← / →   Left / Right half")
-        _ = entry(menu, "\(chord.label) ↑ / ↓   Fill / Restore")
-        let modifiers = entry(menu, "Shortcut modifiers")
-        let choices = NSMenu()
-        for option in Chord.allCases {
-            let item = entry(choices, "\(option.label) + Arrow keys", #selector(change(_:)))
-            item.tag = option.rawValue
-            item.state = option == chord ? .on : .off
+        for (action, shortcut) in zip(Snap.allCases, shortcuts) {
+            _ = entry(menu, "\(shortcut.label)   \(action.title)")
         }
-        modifiers.submenu = choices
+        _ = entry(menu, "Keyboard Shortcuts…", #selector(editShortcuts))
         _ = entry(menu, paused ? "Resume snapping" : "Pause snapping", #selector(toggleSnap))
         entry(menu, "Dock thumbnails", #selector(togglePreview)).state = previews ? .on : .off
         menu.addItem(.separator())
         _ = entry(menu, "Quit DockSnapper", #selector(quit))
     }
 
-    @objc private func change(_ sender: NSMenuItem) { defaults.set(sender.tag, forKey: "modifiers"); configure() }
+    @objc private func editShortcuts() { editor.show(shortcuts) }
+    private func save(_ proposed: [Shortcut]) -> String? {
+        if let message = keys.register(proposed) {
+            configure()
+            return message
+        }
+        shortcuts = proposed
+        if let data = try? JSONEncoder().encode(proposed) { defaults.set(data, forKey: "shortcuts") }
+        configure()
+        return nil
+    }
     @objc private func toggleSnap() { defaults.set(!paused, forKey: "paused"); configure() }
     @objc private func togglePreview() { defaults.set(previews, forKey: "hidePreviews"); configure() }
     @objc private func accessibility() {
