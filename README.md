@@ -13,7 +13,11 @@ Each window remembers its own original bounds for the current app session. Snapp
 
 ![Illustration of the four keyboard shortcuts moving and restoring a window](docs/snapping.gif)
 
-## Build and run
+## Install on Apple silicon
+
+[Download DockSnapper 0.2.0 for Apple silicon](https://github.com/bmeyers22/DockSnapper/releases/download/v0.2.0/DockSnapper-0.2.0-arm64.zip). Unzip it, drag **DockSnapper** into **Applications**, then open it. Look for the split-window icon in the menu bar. The app is Developer ID signed and notarized by Apple.
+
+## Build from source
 
 Use a Mac with Xcode 16 or newer and its command-line tools selected. The build targets macOS 14 or later and compiles for the architecture of the build machine.
 
