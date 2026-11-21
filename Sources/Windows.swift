@@ -46,7 +46,7 @@ enum AX {
 }
 
 final class WindowManager {
-    private var originals: [AXUIElement: CGRect] = [:]
+    private var history = SnapHistory<AXUIElement>()
 
     func snap(_ action: Snap) {
         guard AXIsProcessTrusted(), let app = NSWorkspace.shared.frontmostApplication else { return }
@@ -57,15 +57,15 @@ final class WindowManager {
               let current = AX.frame(window), let primary = NSScreen.screens.first else { return }
         let screens = NSScreen.screens
         let frames = screens.map { Geometry.flip($0.frame, primaryHeight: primary.frame.height) }
-        let original = originals[window]
-        let reference = action == .restore ? original ?? current : current
-        guard let index = Geometry.display(for: reference, among: frames),
-              let target = Geometry.target(action, in: Geometry.flip(screens[index].visibleFrame, primaryHeight: primary.frame.height), original: original) else { return }
-        if action != .restore && original == nil { originals[window] = current }
-        if AX.setFrame(window, target) && action == .restore { originals.removeValue(forKey: window) }
+        let original = history.original(for: window)
+        let reference = action == .restore ? original?.window ?? current : current
+        guard let index = Geometry.display(for: reference, among: frames) else { return }
+        let workArea = Geometry.flip(screens[index].visibleFrame, primaryHeight: primary.frame.height)
+        guard let target = history.destination(action, window: window, current: current, workArea: workArea) else { return }
+        if AX.setFrame(window, target) && action == .restore { history.didRestore(window) }
     }
 
     func prune() {
-        originals = originals.filter { AX.value($0.key, kAXRoleAttribute) != nil }
+        history.keepWindows { AX.value($0, kAXRoleAttribute) != nil }
     }
 }

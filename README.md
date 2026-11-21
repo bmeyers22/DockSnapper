@@ -11,6 +11,8 @@ Snap the focused Mac window with four keyboard shortcuts. Hover over a running a
 
 Each window remembers its own original bounds for the current app session. Snapping respects the menu bar, Dock, and application minimum sizes. Full-screen windows are skipped. If a display has been unplugged, restore fits the window onto an available display.
 
+![Illustration of the four keyboard shortcuts moving and restoring a window](docs/snapping.gif)
+
 ## Build and run
 
 Use a Mac with Xcode 16 or newer and its command-line tools selected. The build targets macOS 14 or later and compiles for the architecture of the build machine.

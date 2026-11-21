@@ -20,3 +20,16 @@ expect(Geometry.display(for: initial, among: [primary]) == 0, "disconnected disp
 let recovered = Geometry.target(.restore, in: primary, original: initial)!
 expect(primary.contains(recovered) && recovered.size == initial.size, "restore after disconnection")
 expect(Geometry.flip(Geometry.flip(work, primaryHeight: 1117), primaryHeight: 1117) == work, "coordinate conversion")
+
+var history = SnapHistory<Int>()
+let spanning = CGRect(x: -60, y: 90, width: 650, height: 480)
+let second = CGRect(x: 260, y: 210, width: 700, height: 500)
+let firstLeft = history.destination(.left, window: 1, current: spanning, workArea: primary)!
+_ = history.destination(.right, window: 2, current: second, workArea: primary)
+_ = history.destination(.fill, window: 1, current: firstLeft, workArea: primary)
+expect(history.destination(.restore, window: 1, current: primary, workArea: primary) == spanning, "restore the exact starting frame across a sequence, including straddling displays")
+history.didRestore(1)
+expect(history.original(for: 1) == nil && history.original(for: 2)?.window == second, "restore histories are independent")
+expect(history.destination(.restore, window: 2, current: primary, workArea: work) == Geometry.target(.restore, in: work, original: second), "restore into the new work area after a display change")
+history.keepWindows { _ in false }
+expect(history.original(for: 2) == nil, "discard closed windows")

@@ -50,3 +50,33 @@ enum Geometry {
         }
     }
 }
+
+
+struct OriginalPlacement {
+    let window: CGRect
+    let workArea: CGRect
+}
+
+struct SnapHistory<Key: Hashable> {
+    private var placements: [Key: OriginalPlacement] = [:]
+
+    func original(for window: Key) -> OriginalPlacement? { placements[window] }
+
+    mutating func destination(_ action: Snap, window: Key, current: CGRect, workArea: CGRect) -> CGRect? {
+        if action == .restore {
+            guard let saved = placements[window] else { return nil }
+            if saved.workArea == workArea { return saved.window }
+            return Geometry.target(.restore, in: workArea, original: saved.window)
+        }
+        if placements[window] == nil {
+            placements[window] = OriginalPlacement(window: current, workArea: workArea)
+        }
+        return Geometry.target(action, in: workArea, original: nil)
+    }
+
+    mutating func didRestore(_ window: Key) { placements.removeValue(forKey: window) }
+
+    mutating func keepWindows(_ predicate: (Key) -> Bool) {
+        placements = placements.filter { predicate($0.key) }
+    }
+}

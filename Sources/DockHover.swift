@@ -75,12 +75,21 @@ final class DockHover {
         for _ in 0..<4 {
             if AX.value(el, kAXSubroleAttribute) as? String == "AXApplicationDockItem",
                let url = AX.value(el, kAXURLAttribute) as? URL,
-               let app = NSWorkspace.shared.runningApplications.first(where: { $0.bundleURL?.standardizedFileURL == url.standardizedFileURL }),
+               let app = runningApp(at: url),
                let frame = AX.frame(el) { return (app, frame) }
             guard let parent = AX.element(el, kAXParentAttribute) else { break }
             el = parent
         }
         return nil
+    }
+
+    private func runningApp(at url: URL) -> NSRunningApplication? {
+        let resolved = url.resolvingSymlinksInPath().standardizedFileURL
+        let apps = NSWorkspace.shared.runningApplications
+        if let exact = apps.first(where: { $0.bundleURL?.resolvingSymlinksInPath().standardizedFileURL == resolved }) { return exact }
+        guard let id = Bundle(url: url)?.bundleIdentifier else { return nil }
+        let matches = apps.filter { $0.bundleIdentifier == id }
+        return matches.count == 1 ? matches.first : nil
     }
 
     private func show(_ app: NSRunningApplication, anchor: CGRect, screen: NSScreen) {
