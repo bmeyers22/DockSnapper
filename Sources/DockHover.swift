@@ -1,8 +1,10 @@
 import AppKit
 import ScreenCaptureKit
+import OSLog
 
 @MainActor
 final class DockHover {
+    private let logger = Logger(subsystem: "com.github.bmeyers22.DockSnapper", category: "Previews")
     private let preview = PreviewPanel()
     private var tick: Timer?
     private var capture: Task<Void, Never>?
@@ -115,8 +117,16 @@ final class DockHover {
             do {
                 let content = try await SCShareableContent.excludingDesktopWindows(true, onScreenWindowsOnly: false)
                 try Task.checkCancellation()
-                let candidates = content.windows.filter { $0.owningApplication?.processID == app.processIdentifier && $0.windowLayer == 0 }
-                let matches = items.map { Self.match($0, candidates: candidates) }
+                let candidates = content.windows.filter { $0.owningApplication?.processID == app.processIdentifier }
+                let descriptions = candidates.map { PreviewWindow(title: $0.title ?? "", bounds: $0.frame, id: $0.windowID, layer: $0.windowLayer) }
+                let bundle = app.bundleIdentifier ?? ""
+                let chrome = bundle == "com.google.Chrome" || bundle.hasPrefix("com.google.Chrome.")
+                let matches = items.map { item -> SCWindow? in
+                    let accessible = PreviewWindow(title: item.title, bounds: item.bounds, id: AX.windowID(item.window))
+                    let index = PreviewMatching.matches(accessible, candidates: descriptions, chromeName: chrome ? app.localizedName : nil)
+                    return index.map { candidates[$0] }
+                }
+                var displayed = 0
                 for (index, matched) in matches.enumerated() {
                     guard let window = matched,
                           matches.compactMap({ $0?.windowID }).filter({ $0 == window.windowID }).count == 1 else { continue }
@@ -130,23 +140,24 @@ final class DockHover {
                     config.showsCursor = false
                     config.ignoreShadowsSingleWindow = true
                     let filter = SCContentFilter(desktopIndependentWindow: window)
-                    guard let image = try? await SCScreenshotManager.captureImage(contentFilter: filter, configuration: config) else { continue }
+                    let image: CGImage
+                    do {
+                        image = try await SCScreenshotManager.captureImage(contentFilter: filter, configuration: config)
+                    } catch {
+                        try Task.checkCancellation()
+                        self?.logger.error("Window capture failed: \((error as NSError).domain, privacy: .public) \((error as NSError).code)")
+                        continue
+                    }
                     try Task.checkCancellation()
                     self?.preview.setImage(image, at: index)
+                    displayed += 1
                 }
-            } catch { /* Titles stay selectable when macOS cannot supply images. */ }
+                self?.logger.info("Window images: \(displayed) displayed, \(matches.compactMap { $0 }.count) matched, \(items.count) requested")
+            } catch is CancellationError {
+                return
+            } catch {
+                self?.logger.error("Window list unavailable: \((error as NSError).code)")
+            }
         }
-    }
-
-    private static func match(_ item: WindowChoice, candidates: [SCWindow]) -> SCWindow? {
-        let titled = candidates.filter { $0.title == item.title }
-        if titled.count == 1 { return titled.first }
-        guard let rect = item.bounds else { return nil }
-        let pool = titled.isEmpty ? candidates : titled
-        let aligned = pool.filter {
-            abs($0.frame.minX - rect.minX) <= 2 && abs($0.frame.minY - rect.minY) <= 2 &&
-            abs($0.frame.width - rect.width) <= 2 && abs($0.frame.height - rect.height) <= 2
-        }
-        return aligned.count == 1 ? aligned.first : nil
     }
 }

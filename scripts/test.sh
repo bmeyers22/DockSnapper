@@ -2,5 +2,5 @@
 set -euo pipefail
 cd "$(dirname "$0")/.."
 mkdir -p build/module-cache
-xcrun swiftc -module-cache-path build/module-cache Sources/Geometry.swift Sources/Shortcut.swift Tests/main.swift -o build/geometry-tests
+xcrun swiftc -module-cache-path build/module-cache Sources/Geometry.swift Sources/Shortcut.swift Sources/PreviewMatching.swift Tests/main.swift -o build/geometry-tests
 build/geometry-tests

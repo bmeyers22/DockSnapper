@@ -2,6 +2,21 @@ import AppKit
 import ApplicationServices
 
 enum AX {
+    // This optional macOS symbol bridges Accessibility and ScreenCaptureKit window IDs.
+    // If a macOS release omits it, the preview matcher falls back to titles and bounds.
+    private typealias GetWindowID = @convention(c) (AXUIElement, UnsafeMutablePointer<CGWindowID>) -> AXError
+    private static let getWindowID: GetWindowID? = {
+        guard let process = dlopen(nil, RTLD_LAZY),
+              let address = dlsym(process, "_AXUIElementGetWindow") else { return nil }
+        return unsafeBitCast(address, to: GetWindowID.self)
+    }()
+
+    static func windowID(_ item: AXUIElement) -> CGWindowID? {
+        var id = kCGNullWindowID
+        guard let getWindowID, getWindowID(item, &id) == .success, id != kCGNullWindowID else { return nil }
+        return id
+    }
+
     static let system = AXUIElementCreateSystemWide()
 
     static func value(_ item: AXUIElement, _ key: String) -> CFTypeRef? {

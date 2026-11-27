@@ -47,3 +47,19 @@ custom[2] = Shortcut(key: UInt32(kVK_ANSI_F), modifiers: UInt32(controlKey | cmd
 preferences.set(try JSONEncoder().encode(custom), forKey: "shortcuts")
 expect(Shortcut.load(from: preferences) == custom, "custom key and modifiers survive reload independently")
 expect(custom[2].conflicts(with: Shortcut(key: custom[2].key, modifiers: custom[2].modifiers, name: "f")), "detect duplicate bindings independent of displayed name")
+
+let overlapping = ["Board", "Board - Tasks", "Inbox"].map { PreviewWindow(title: $0, bounds: primary) }
+func previewMatch(_ title: String, _ windows: [PreviewWindow] = overlapping, chrome: String? = "Google Chrome") -> Int? {
+    PreviewMatching.matches(PreviewWindow(title: title, bounds: primary), candidates: windows, chromeName: chrome)
+}
+expect(previewMatch("Board - Tasks - Google Chrome") == 1, "overlapping Chrome windows retain the complete page title")
+expect(previewMatch("Inbox — Google Chrome — Work") == 2, "Chrome profile suffix and alternate dash")
+expect(previewMatch("Inbox", chrome: nil) == 2, "exact title uses the existing non-Chrome path")
+expect(previewMatch("Unknown - Google Chrome") == nil, "ambiguous bounds never assign a different window")
+expect(previewMatch("Board - Google Chrome", [overlapping[0], overlapping[0]]) == nil, "duplicate titles and frames remain ambiguous")
+
+let identified = [PreviewWindow(title: "New Tab", bounds: primary, id: 102),
+                  PreviewWindow(title: "New Tab", bounds: primary, id: 101, layer: 3)]
+let active = PreviewWindow(title: "New Tab - Personal - Google Chrome", bounds: primary, id: 101)
+expect(PreviewMatching.matches(active, candidates: identified, chromeName: "Google Chrome") == 1, "match exact window identity even when titles and frames collide")
+expect(PreviewMatching.matches(active, candidates: [identified[0]], chromeName: "Google Chrome") == nil, "missing known window cannot inherit another thumbnail")

@@ -15,7 +15,7 @@ Each window remembers its own original bounds for the current app session. Snapp
 
 ## Install on Apple silicon
 
-[Download DockSnapper 0.2.0 for Apple silicon](https://github.com/bmeyers22/DockSnapper/releases/download/v0.2.0/DockSnapper-0.2.0-arm64.zip). Unzip it, drag **DockSnapper** into **Applications**, then open it. Look for the split-window icon in the menu bar. The app is Developer ID signed and notarized by Apple.
+[Download DockSnapper 0.2.1 for Apple silicon](https://github.com/bmeyers22/DockSnapper/releases/download/v0.2.1/DockSnapper-0.2.1-arm64.zip). Unzip it, drag **DockSnapper** into **Applications**, then open it. Look for the split-window icon in the menu bar. The app is Developer ID signed and notarized by Apple.
 
 ## Build from source
 
